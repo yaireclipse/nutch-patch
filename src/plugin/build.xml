@@ -31,6 +31,7 @@
      <ant dir="index-basic" target="deploy"/>
      <ant dir="index-more" target="deploy"/>
      <ant dir="index-metadata" target="deploy"/>
+     <ant dir="index-raw" target="deploy"/>
      <ant dir="indexer-solr" target="deploy"/>
      <ant dir="indexer-elastic" target="deploy"/>
      <ant dir="language-identifier" target="deploy"/>
