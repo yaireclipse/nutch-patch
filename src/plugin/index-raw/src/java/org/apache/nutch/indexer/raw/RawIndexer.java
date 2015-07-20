@@ -10,11 +10,15 @@ import org.apache.nutch.indexer.IndexingFilter;
 import org.apache.nutch.indexer.NutchDocument;
 import org.apache.nutch.storage.WebPage;
 import org.apache.nutch.storage.WebPage.Field;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Charsets;
 
 public class RawIndexer implements IndexingFilter {
   private Configuration conf;
+
+  public static final Logger LOG = LoggerFactory.getLogger(RawIndexer.class);
   
   private static final Collection<WebPage.Field> FIELDS = new HashSet<WebPage.Field>();
 
@@ -31,7 +35,7 @@ public class RawIndexer implements IndexingFilter {
 
     final ByteBuffer contentBuf = page.getContent();
     if (contentBuf == null) {
-    	System.out.println( "page.getContent() is null. url = " + url );
+    	LOG.warn( "page.getContent() is null. url = " + url );
 		return doc;
 	}
     final int remaining = contentBuf.remaining();
