@@ -172,6 +172,7 @@
       <packageset dir="${plugins.dir}/index-metadata/src/java"/>
       <packageset dir="${plugins.dir}/index-more/src/java"/>
       <packageset dir="${plugins.dir}/index-raw/src/java"/>
+  	  <packageset dir="${plugins.dir}/index-history/src/java"/>
       <packageset dir="${plugins.dir}/indexer-elastic/src/java"/>
       <packageset dir="${plugins.dir}/indexer-solr/src/java"/>
       <packageset dir="${plugins.dir}/language-identifier/src/java"/>
@@ -603,6 +604,7 @@
       <packageset dir="${plugins.dir}/index-metadata/src/java"/>
       <packageset dir="${plugins.dir}/index-more/src/java"/>
   	  <packageset dir="${plugins.dir}/index-raw/src/java"/>
+  	  <packageset dir="${plugins.dir}/index-history/src/java"/>
       <packageset dir="${plugins.dir}/indexer-elastic/src/java"/>
       <packageset dir="${plugins.dir}/indexer-solr/src/java"/>
       <packageset dir="${plugins.dir}/language-identifier/src/java"/>
@@ -973,6 +975,7 @@
 		<source path="${basedir}/src/plugin/index-more/src/java/" />
         <source path="${basedir}/src/plugin/index-more/src/test/" />
 		<source path="${basedir}/src/plugin/index-raw/src/java/" />
+      	<source path="${basedir}/src/plugin/index-history/src/java/" />
         <source path="${basedir}/src/plugin/language-identifier/src/java/" />
         <source path="${basedir}/src/plugin/language-identifier/src/test/" />
         <source path="${basedir}/src/plugin/lib-http/src/java/" />

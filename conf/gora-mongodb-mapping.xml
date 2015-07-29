@@ -58,4 +58,9 @@
         <field name="outlinks" docfield="outlinks" type="document"/>
     </class>
 
+	<!-- Added by Yair Shefi -->    
+    <class name="org.apache.nutch.indexer.history.CrawledWebPage" keyClass="java.lang.String" document="c_webpage">
+    	<field name="WebPageData" docfield="webpagedata" type="list"/>
+    </class>
+
 </gora-otd>
