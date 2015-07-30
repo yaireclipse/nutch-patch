@@ -114,7 +114,7 @@ public class HistoryIndexer implements IndexingFilter {
     
     copyPage(url, page, dataStore, crawledWebPage);
     
-    final String msg = buildMessage(url);
+    final String msg = buildMessage(url, page.getFetchTime());
     sendEvent(msg);
 
 	return doc;
@@ -153,8 +153,8 @@ public class HistoryIndexer implements IndexingFilter {
 	closeChannelAndConnection(channel, false);
   }
 
-  private String buildMessage(final String url) {
-	final EventMessage eventMessage = buildEventMessage(url);
+  private String buildMessage(final String url, final Long fetchTime) {
+	final EventMessage eventMessage = buildEventMessage(url, fetchTime);
 	
 	final Gson gson = new Gson();
 	final String eventJson = gson.toJson(eventMessage);
@@ -162,7 +162,7 @@ public class HistoryIndexer implements IndexingFilter {
 	return eventJson;
   }
 
-  private EventMessage buildEventMessage(final String url) {
+  private EventMessage buildEventMessage(final String url, final Long fetchTime) {
 	final EventMessage eventMessage = new EventMessage();
 	
 	final String messageType = conf.get("newdata.msg.type", "newUrlData");
@@ -176,6 +176,7 @@ public class HistoryIndexer implements IndexingFilter {
 	final HashMap<String, Object> params = new HashMap<String, Object>();
 	params.put("db", "mongo");
 	params.put("key", url);
+	params.put("fetchTime", fetchTime);
 	eventMessage.setParams(params);
 	return eventMessage;
   }
