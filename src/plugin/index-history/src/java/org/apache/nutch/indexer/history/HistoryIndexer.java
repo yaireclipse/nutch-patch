@@ -17,11 +17,17 @@
 
 package org.apache.nutch.indexer.history;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.TimeoutException;
+
+import javax.annotation.Nullable;
 
 import org.apache.gora.store.DataStore;
 import org.apache.gora.store.DataStoreFactory;
@@ -38,6 +44,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Objects;
+import com.google.gson.Gson;
+import com.j256.ormlite.logger.Log;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.ConnectionFactory;
 
 /**
  * If a {@link WebPage} was modified since last indexing, that WebPage is copied to
@@ -81,7 +92,7 @@ public class HistoryIndexer implements IndexingFilter {
     if (doc == null)
       return doc;
 
-    final String schema = conf.get("crawled.schema.webpage", "c_webpage");
+    final String schema = conf.get("newdata.schema.webpage", "c_webpage");
     
     final DataStore<String, CrawledWebPage> dataStore = createDataStore(schema);
 
@@ -103,7 +114,93 @@ public class HistoryIndexer implements IndexingFilter {
     
     copyPage(url, page, dataStore, crawledWebPage);
     
-    return doc;
+    final String msg = buildMessage(url);
+    sendEvent(msg);
+
+	return doc;
+  }
+
+  private void sendEvent(final String message) {
+	  
+	ConnectionFactory factory = new ConnectionFactory();
+    factory.setHost("localhost");
+    
+    Connection connection = null;
+    Channel channel = null;    
+	try {
+		connection = factory.newConnection();
+		channel = connection.createChannel();
+	} catch (IOException | TimeoutException e) {
+		final String errMsg = "failed opening connection or channel";
+		LOG.error(errMsg, e);
+		closeChannelAndConnection(channel, true);
+		throw new RuntimeException(errMsg, e);
+	}
+	
+	final String queueNamesStr = conf.get("newdata.queue.names", "nlp,langdetector");
+	final String[] queueNames = queueNamesStr.split(",");
+	for (final String singleQueueName : queueNames) {
+		try {
+			channel.queueDeclare(singleQueueName, true, false, false, null);
+			channel.basicPublish("", singleQueueName, null, message.getBytes());
+			LOG.debug(" [x] Sent '" + message + "'");
+		} catch (IOException e) {
+			final String errMsg = String.format( "failed sending message [%s] to queue [%s]", message, singleQueueName);
+			LOG.error(errMsg, e);
+		}
+	}
+	
+	closeChannelAndConnection(channel, false);
+  }
+
+  private String buildMessage(final String url) {
+	final EventMessage eventMessage = buildEventMessage(url);
+	
+	final Gson gson = new Gson();
+	final String eventJson = gson.toJson(eventMessage);
+	
+	return eventJson;
+  }
+
+  private EventMessage buildEventMessage(final String url) {
+	final EventMessage eventMessage = new EventMessage();
+	
+	final String messageType = conf.get("newdata.msg.type", "newUrlData");
+	eventMessage.setMsgType(messageType);
+	
+	final String source = conf.get("newdata.source", "crawler");
+	eventMessage.setSource(source);
+	
+	eventMessage.setMsgUuid(UUID.randomUUID());
+	
+	final HashMap<String, Object> params = new HashMap<String, Object>();
+	params.put("db", "mongo");
+	params.put("key", url);
+	eventMessage.setParams(params);
+	return eventMessage;
+  }
+
+  private void closeChannelAndConnection(@Nullable final Channel channel, final boolean swallowErrors) {
+	
+	if ( channel == null ) {
+		return;
+	}
+	
+	try {
+		final Connection connection = channel.getConnection();
+		if (channel.isOpen()) {
+			channel.close();
+		}
+		if ( connection != null && connection.isOpen() ) {
+			connection.close();
+		}
+	} catch (IOException | TimeoutException e) {
+		final String errMsg = "failed closing connection or channel";
+		LOG.error(errMsg, e);
+		if ( ! swallowErrors ) {
+			throw new RuntimeException(errMsg, e);
+		}
+	}
   }
 
   private DataStore<String, CrawledWebPage> createDataStore(String schema) {
