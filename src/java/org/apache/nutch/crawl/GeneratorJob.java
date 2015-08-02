@@ -255,26 +255,26 @@ public class GeneratorJob extends NutchTool implements Tool {
   }
 
   public int run(String[] args) throws Exception {
-    if (args.length <= 0) {
-      System.out
-          .println("Usage: GeneratorJob [-topN N] [-crawlId id] [-noFilter] [-noNorm] [-adddays numDays]");
-      System.out
-          .println("    -topN <N>      - number of top URLs to be selected, default is Long.MAX_VALUE ");
-      System.out
-          .println("    -crawlId <id>  - the id to prefix the schemas to operate on, \n \t \t    (default: storage.crawl.id)\");");
-      System.out
-          .println("    -noFilter      - do not activate the filter plugin to filter the url, default is true ");
-      System.out
-          .println("    -noNorm        - do not activate the normalizer plugin to normalize the url, default is true ");
-      System.out
-          .println("    -adddays       - Adds numDays to the current time to facilitate crawling urls already");
-      System.out
-          .println("                     fetched sooner then db.fetch.interval.default. Default value is 0.");
-      System.out.println("    -batchId       - the batch id ");
-      System.out.println("----------------------");
-      System.out.println("Please set the params.");
-      return -1;
-    }
+//    if (args.length <= 0) {
+//      System.out
+//          .println("Usage: GeneratorJob [-topN N] [-crawlId id] [-noFilter] [-noNorm] [-adddays numDays]");
+//      System.out
+//          .println("    -topN <N>      - number of top URLs to be selected, default is Long.MAX_VALUE ");
+//      System.out
+//          .println("    -crawlId <id>  - the id to prefix the schemas to operate on, \n \t \t    (default: storage.crawl.id)\");");
+//      System.out
+//          .println("    -noFilter      - do not activate the filter plugin to filter the url, default is true ");
+//      System.out
+//          .println("    -noNorm        - do not activate the normalizer plugin to normalize the url, default is true ");
+//      System.out
+//          .println("    -adddays       - Adds numDays to the current time to facilitate crawling urls already");
+//      System.out
+//          .println("                     fetched sooner then db.fetch.interval.default. Default value is 0.");
+//      System.out.println("    -batchId       - the batch id ");
+//      System.out.println("----------------------");
+//      System.out.println("Please set the params.");
+//      return -1;
+//    }
 
     long curTime = System.currentTimeMillis(), topN = Long.MAX_VALUE;
     boolean filter = true, norm = true;
