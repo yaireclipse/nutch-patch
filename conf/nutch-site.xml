@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+
+<!-- Put site-specific property overrides in this file. -->
+
+<configuration>
+
+<property>
+ <name>http.agent.name</name>
+ <value>Geek Nutch Crawler</value>
+</property>
+
+<property>
+  <name>storage.data.store.class</name>
+    <value>org.apache.gora.mongodb.store.MongoStore</value>
+    <description>Default class for storing data</description>
+  </property>
+
+  <property>
+    <name>plugin.folders</name>
+    <value>/Users/yairshefi/git/geekdata_nutch/build/plugins</value>
+  </property>
+ 
+  <property>
+    <name>plugin.includes</name>
+    <value>protocol-(http|httpclient)|urlfilter-regex|index-(basic|more)|query-(basic|site|url|lang)|indexer-elastic|nutch-extensionpoints|parse-(text|html|msexcel|msword|mspowerpoint|pdf)|summary-basic|scoring-opic|urlnormalizer-(pass|regex|basic)|parse-(html|tika|metatags)|index-(basic|anchor|more|metadata|raw|history)</value>
+  </property>
+ 
+  <property>
+    <name>elastic.host</name>
+    <value>localhost</value>
+  </property>
+ 
+ 
+  <property>
+    <name>db.fetch.interval.default</name>
+    <value>600</value>
+    <description>The number of seconds between re-fetches.
+    </description>
+  </property>
+
+  <property>
+    <name>elastic.cluster</name>
+    <value>elasticsearch_yairshefi</value>
+  </property>
+ 
+  <property>
+    <name>elastic.index</name>
+    <value>nutch</value>
+  </property>
+ 
+  <property>
+    <name>parser.character.encoding.default</name>
+    <value>utf-8</value>
+  </property>
+ 
+  <property>
+    <name>http.content.limit</name>
+    <value>6553600</value>
+  </property>
+</configuration>
