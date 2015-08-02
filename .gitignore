@@ -5,4 +5,4 @@ conf/slaves
 build/
 runtime/
 logs/
-hadoop.log
+hadoop.log*
