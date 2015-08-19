@@ -31,6 +31,7 @@ import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.PosixParser;
 import org.apache.commons.lang.StringUtils;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.nutch.api.impl.JobFactory;
 import org.apache.nutch.api.impl.NutchServerPoolExecutor;
 import org.apache.nutch.api.impl.RAMConfManager;
@@ -244,6 +245,9 @@ public class NutchServer extends Application {
   private static void startServer() {
     NutchServer server = new NutchServer();
     server.start();
+	Configuration conf = server.getConfMgr().get("default");
+//	conf.setQuietMode(false);
+	System.out.println(conf.get("storage.data.store.class"));
   }
 
   private static void stopRemoteServer(boolean force) {

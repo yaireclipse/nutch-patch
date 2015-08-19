@@ -92,30 +92,38 @@ public class HistoryIndexer implements IndexingFilter {
     if (doc == null)
       return doc;
 
-    final String schema = conf.get("newdata.schema.webpage", "c_webpage");
-    
-    final DataStore<String, CrawledWebPage> dataStore = createDataStore(schema);
-
-    final CrawledWebPage crawledWebPage = Objects.firstNonNull(dataStore.get(url), new CrawledWebPage());
-    
-    List<WebPage> webPageData = crawledWebPage.getWebPageData();
-    if (webPageData == null) {
-		webPageData = new ArrayList<WebPage>();
-		crawledWebPage.setWebPageData(webPageData);
-	}
-    
-    final ByteBuffer signature = page.getSignature();
-    for (final WebPage historyWebPage : webPageData) {
-	  final ByteBuffer prevSig = historyWebPage.getSignature();
-      if (SignatureComparator.compare(prevSig, signature) == 0) {
-        return doc; // current page with current content was already copied to history
-      }
-	}
-    
-    copyPage(url, page, dataStore, crawledWebPage);
-    
-    final String msg = buildMessage(url, page.getFetchTime());
-    sendEvent(msg);
+    try {
+	    conf.unset("preferred.schema.name");
+	    final String schema = conf.get("history.schema.webpage", "c_webpage");
+	    
+	    final DataStore<String, CrawledWebPage> dataStore = createDataStore(schema);
+	
+	    final CrawledWebPage crawledWebPage = Objects.firstNonNull(dataStore.get(url), new CrawledWebPage());
+	    
+	    List<WebPage> webPageData = crawledWebPage.getWebPageData();
+	    if (webPageData == null) {
+			webPageData = new ArrayList<WebPage>();
+			crawledWebPage.setWebPageData(webPageData);
+		}
+	    
+	    final boolean skipUnmodified = Boolean.parseBoolean( conf.get("history.skip.unmodified", "true") );
+	    if ( skipUnmodified ) {
+		    final ByteBuffer signature = page.getSignature();
+		    for (final WebPage historyWebPage : webPageData) {
+			  final ByteBuffer prevSig = historyWebPage.getSignature();
+		      if (SignatureComparator.compare(prevSig, signature) == 0) {
+		        return doc; // current page with current content was already copied to history
+		      }
+			}
+	    }
+	    
+	    copyPage(url, page, dataStore, crawledWebPage);
+	    
+	    final String msg = buildMessage(url, page.getFetchTime());
+	    sendEvent(msg);
+    } catch (Exception e) {
+    	LOG.error(String.format("Failed indexing url %s", url), e);
+    }
 
 	return doc;
   }
@@ -123,7 +131,14 @@ public class HistoryIndexer implements IndexingFilter {
   private void sendEvent(final String message) {
 	  
 	ConnectionFactory factory = new ConnectionFactory();
-    factory.setHost("localhost");
+	final String host = conf.get("history.rabbitmq.host", "localhost");
+    factory.setHost( host );
+    
+    final String user = conf.get("history.rabbitmq.user");
+    factory.setUsername( user );
+    
+    final String password = conf.get("history.rabbitmq.password");
+    factory.setPassword( password );
     
     Connection connection = null;
     Channel channel = null;    
@@ -137,7 +152,7 @@ public class HistoryIndexer implements IndexingFilter {
 		throw new RuntimeException(errMsg, e);
 	}
 	
-	final String queueNamesStr = conf.get("newdata.queue.names", "nlp,langdetector");
+	final String queueNamesStr = conf.get("history.rabbitmq.queue.names", "nlp,langdetector");
 	final String[] queueNames = queueNamesStr.split(",");
 	for (final String singleQueueName : queueNames) {
 		try {

@@ -46,13 +46,15 @@
     <dependency org="commons-codec" name="commons-codec" rev="1.3"
       conf="*->default,sources" />
 
-    <dependency org="org.apache.hadoop" name="hadoop-core"
+	<dependency org="org.apache.hadoop" name="hadoop-client"
+      rev="2.7.1" conf="*->default,sources"/>
+    <!--dependency org="org.apache.hadoop" name="hadoop-core"
       rev="1.2.0" conf="*->default,sources">
       <exclude org="net.sf.kosmosfs" name="kfs" />
       <exclude org="net.java.dev.jets3t" name="jets3t" />
       <exclude org="org.eclipse.jdt" name="core" />
       <exclude org="org.mortbay.jetty" name="jsp-*" />
-    </dependency>
+    </dependency-->
 
     <dependency org="com.ibm.icu" name="icu4j" rev="4.0.1" />
     <dependency org="org.apache.tika" name="tika-core" rev="1.6" />
@@ -80,12 +82,12 @@
     <!--artifacts needed for testing -->
     <dependency org="junit" name="junit" rev="4.11" conf="*->default,sources" />
 
-    <dependency org="org.apache.hadoop" name="hadoop-test" rev="1.2.0" conf="test->default,sources">
+    <!--dependency org="org.apache.hadoop" name="hadoop-test" rev="2.7.1" conf="test->default,sources">
       <exclude org="net.sf.kosmosfs" name="kfs" />
       <exclude org="net.java.dev.jets3t" name="jets3t" />
       <exclude org="org.eclipse.jdt" name="core" />
       <exclude org="org.mortbay.jetty" name="jsp-*" />
-    </dependency>
+    </dependency-->
 
     <dependency org="org.mortbay.jetty" name="jetty" rev="6.1.26" conf="test->default,sources" />
     <dependency org="org.mortbay.jetty" name="jetty-util" rev="6.1.26" conf="test->default,sources" />
@@ -103,7 +105,7 @@
     <!-- N.B. To use Gora SNAPSHOT's merely replace the 'ref' value with the SNAPSHOT version 
     and add changing="true" alongside the dependency declaration. An example has been
     provided for the gora-core dependency as below -->
-    <dependency org="org.apache.gora" name="gora-core" rev="0.5" conf="*->default,sources"/>
+    <dependency org="org.apache.gora" name="gora-core" rev="0.6" conf="*->default,sources"/>
     
     <!-- Uncomment this to use SQL as Gora backend. It should be noted that the 
     gora-sql 0.1.1-incubating artifact is NOT compatable with gora-core 0.3. Users should 
@@ -129,7 +131,7 @@
     -->
     <!-- Uncomment this to use MongoDB as Gora backend. -->
     
-    <dependency org="org.apache.gora" name="gora-mongodb" rev="0.5" conf="*->default,sources" />
+    <dependency org="org.apache.gora" name="gora-mongodb" rev="0.6" conf="*->default,sources" />
        
     <!-- Uncomment this to use Solr as Gora backend. -->
     <!--
@@ -138,8 +140,8 @@
     <!-- The gora-compiler is used within the 'ant generate-gora-src' target to compile
     the Gora .avsc files within ./src/gora 
     -->
-    <dependency org="org.apache.gora" name="gora-compiler-cli" rev="0.5" conf="*->default,sources"/>
-    <dependency org="org.apache.gora" name="gora-compiler" rev="0.5" conf="*->default,sources"/>
+    <dependency org="org.apache.gora" name="gora-compiler-cli" rev="0.6" conf="*->default,sources"/>
+    <dependency org="org.apache.gora" name="gora-compiler" rev="0.6" conf="*->default,sources"/>
 
     <!-- web app dependencies -->
 

@@ -92,7 +92,7 @@
   <javac 
   	encoding="${build.encoding}" 
   	srcdir="${src.dir}"
-    includes="org/apache/nutch/**/*.java" 
+    includes="org/apache/nutch/**/*.java com/geektime/**/*.java" 
   	destdir="${build.classes}"
     debug="${javac.debug}" 
   	optimize="${javac.optimize}" 
