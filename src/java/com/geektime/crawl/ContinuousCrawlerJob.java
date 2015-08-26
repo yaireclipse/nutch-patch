@@ -28,8 +28,12 @@ public class ContinuousCrawlerJob {
 	
 	private static final String BATCH_ID = "-batchId";
 	private static final String TOP_N = "-topN";
+	private static final String CYCLES = "-cycles";
+	
 	public static List<Class<? extends NutchTool>> crawlerFlowJobClasses;
 	public static Map<Class<? extends NutchTool>, List<String>> crawlerFlowJobArgs;
+
+	private static int cycles;
 	
 	static {
 		crawlerFlowJobClasses = Lists.<Class<? extends NutchTool>>newArrayList(
@@ -73,6 +77,8 @@ public class ContinuousCrawlerJob {
 		        externalBatchId = args[++i];
 			} else if (TOP_N.equals(args[i])) {
 				setNamedArgument(TOP_N, args[++i], GeneratorJob.class);
+			} else if (CYCLES.equals(args[i])) {
+				cycles = Integer.parseInt(args[++i]);
 			}
 		}
 		
@@ -84,13 +90,18 @@ public class ContinuousCrawlerJob {
 		}
 		
 		String batchId = null;
-		while (res == 0) {
+		int currCycle = 1;
+		while (res == 0 && currCycle <= cycles) {
 			final Class<? extends NutchTool> jobClass = crawlerFlowJobClasses.get(jobClassIndex);
 			batchId = determineBatchId(jobClassIndex, batchId, externalBatchId);
+			LOG.info(String.format("starting crawl stage: %s, crawl cycle: %d", jobClass.getSimpleName(), currCycle));
 			res = runJob(jobClass);
 			if (res == 0) {
 				jobClassIndex++;
 				jobClassIndex = jobClassIndex % crawlerFlowJobClasses.size();
+				if (jobClassIndex == 0 ) {
+					currCycle++;
+				}
 			} else { // retry in 5 sec.
 				LOG.error("job " + jobClass.getSimpleName() + " returned error code result: " + res + ". Retrying in 5 seconds...");
 				Thread.sleep(5000);
