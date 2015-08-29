@@ -53,6 +53,7 @@ import org.restlet.resource.ClientResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.geektime.crawl.ContinuousCrawlerJobResource;
 import com.google.common.collect.Queues;
 import com.google.common.collect.Sets;
 
@@ -121,6 +122,7 @@ public class NutchServer extends Application {
     resources.add(ConfigResource.class);
     resources.add(DbResource.class);
     resources.add(SeedResource.class);
+    resources.add(ContinuousCrawlerJobResource.class);
     return resources;
   }
 

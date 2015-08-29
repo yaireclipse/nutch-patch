@@ -2,6 +2,8 @@ package com.geektime.crawl;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -30,18 +32,12 @@ public class ContinuousCrawlerJob {
 	private static final String TOP_N = "-topN";
 	private static final String CYCLES = "-cycles";
 	
-	public static List<Class<? extends NutchTool>> crawlerFlowJobClasses;
-	public static Map<Class<? extends NutchTool>, List<String>> crawlerFlowJobArgs;
-
-	private static int cycles;
+	private static List<Class<? extends NutchTool>> crawlerFlowJobClasses = buildJobsflow();
+	private static Map<String, Object> defaultArgs = buildDefaultArgs();
 	
-	static {
-		crawlerFlowJobClasses = Lists.<Class<? extends NutchTool>>newArrayList(
-				GeneratorJob.class,
-				FetcherJob.class,
-				ParserJob.class,
-				DbUpdaterJob.class,
-				IndexingJob.class);
+	private Map<Class<? extends NutchTool>, List<String>> crawlerFlowJobArgs;
+
+	private ContinuousCrawlerJob() {
 		crawlerFlowJobArgs = Maps.newHashMap();
 		crawlerFlowJobArgs.put(InjectorJob.class, Lists.newArrayList("urls"));
 		crawlerFlowJobArgs.put(GeneratorJob.class, Lists.newArrayList(TOP_N, "80"));
@@ -50,48 +46,91 @@ public class ContinuousCrawlerJob {
 		crawlerFlowJobArgs.put(DbUpdaterJob.class, Lists.newArrayList());
 		crawlerFlowJobArgs.put(IndexingJob.class, Lists.newArrayList());
 	}
+
+	@SuppressWarnings("unchecked")
+	private static List<Class<? extends NutchTool>> buildJobsflow() {
+		return Lists.<Class<? extends NutchTool>>newArrayList(
+				GeneratorJob.class,
+				FetcherJob.class,
+				ParserJob.class,
+				DbUpdaterJob.class,
+				IndexingJob.class);
+		
+	}
 	
+	private static Map<String, Object> buildDefaultArgs() {
+		final HashMap<String, Object> args = Maps.newHashMap();
+		args.put("inject", false);
+		args.put("stage", 0);
+		args.put(TOP_N, "80");
+		args.put("cycles", Integer.MAX_VALUE);
+		return Collections.unmodifiableMap(args);
+	}
+
 	public static void main(String[] args) throws Exception {
+		int res = run(args);
+		System.exit(res);
+	}
+	
+	public static int run(String[] args) throws Exception {
 		
-		int jobClassIndex = 0;
-		int res = 0;
+		final Map<String, Object> ccJobArgs = new HashMap<String, Object>();
 		
-		boolean inject = false;
-		String externalBatchId = null;
+		ccJobArgs.put("inject", false);
 		
 		for (int i = 0; i < args.length; i++) {
 			if ("-inject".equals(args[i])) {
-				inject = true;
+				ccJobArgs.put("inject", true);
 			} else if ("-stage".equals(args[i])) {
 				checkArgument(args.length > i + 1, "stage argument specified without value");
+				int stage = 1;
 				try {
-					jobClassIndex = Integer.parseInt( args[i + 1] ) - 1;
+					stage = Integer.parseInt( args[i + 1] ) - 1;
+					ccJobArgs.put("stage", stage);
 				} catch (NumberFormatException e) {
 					throw new IllegalArgumentException("argument '-stage' must be a number. Actual value: " + args[i + 1]);
 				}
-				if (jobClassIndex < 0 || jobClassIndex >= crawlerFlowJobClasses.size() ) {
+				if (stage < 0 || stage >= crawlerFlowJobClasses.size() ) {
 					throw new IllegalArgumentException("argument '-stage' must be a number between 1 and " + crawlerFlowJobClasses.size()
-														+ ". Actual value: " + args[i]);
+														+ ". Actual value: " + args[i + 1]);
 				}
 			} else if (BATCH_ID.equals(args[i])) {
-		        externalBatchId = args[++i];
+				ccJobArgs.put("externalBatchId", args[++i]);
 			} else if (TOP_N.equals(args[i])) {
-				setNamedArgument(TOP_N, args[++i], GeneratorJob.class);
+				ccJobArgs.put(TOP_N,args[++i]);
 			} else if (CYCLES.equals(args[i])) {
-				cycles = Integer.parseInt(args[++i]);
+				ccJobArgs.put("cycles", Integer.parseInt(args[++i]));
 			}
 		}
 		
-		if (inject) {
+		return run(ccJobArgs);
+	}
+		
+	public static int run(final Map<String, Object> args) throws Exception {
+		final ContinuousCrawlerJob ccJob = new ContinuousCrawlerJob();
+		return ccJob.runJobInstance(args);
+	}
+	
+	private int runJobInstance(final Map<String, Object> args) throws Exception {
+		
+		int res = 0;
+		
+		if ( (boolean) getArgValue("inject", args) ) {
 			res = runJob(InjectorJob.class);
 			if (res != 0) {
 				System.exit(res);
 			}
 		}
 		
+		
+		int jobClassIndex = (int) getArgValue("stage", args);		
+		final String externalBatchId = (String) args.get("externalBatchId");
+		setNamedArgument(TOP_N, (String) getArgValue(TOP_N, args), GeneratorJob.class);
+		int maxCycles = (int) getArgValue("cycles", args);
+		
 		String batchId = null;
 		int currCycle = 1;
-		while (res == 0 && currCycle <= cycles) {
+		while (res == 0 && currCycle <= maxCycles) {
 			final Class<? extends NutchTool> jobClass = crawlerFlowJobClasses.get(jobClassIndex);
 			batchId = determineBatchId(jobClassIndex, batchId, externalBatchId);
 			LOG.info(String.format("starting crawl stage: %s, crawl cycle: %d", jobClass.getSimpleName(), currCycle));
@@ -108,10 +147,17 @@ public class ContinuousCrawlerJob {
 				res = 0;
 			}
 		}
-		System.exit(res);
+		return res;
 	}
 
-	private static String determineBatchId(int jobClassIndex, String batchId, String externalBatchId) {
+	private Object getArgValue(final String name, final Map<String, Object> args) {
+		if (args.containsKey(name)) {
+			return args.get(name);
+		}
+		return defaultArgs.get(name);
+	}
+	
+	private String determineBatchId(final int jobClassIndex, String batchId, final String externalBatchId) {
 		final Class<? extends NutchTool> jobClass = crawlerFlowJobClasses.get(jobClassIndex);
 		if (GeneratorJob.class == jobClass) {
 			// batchId == null actually indicates that this is the first cycle of this crawl invocation
@@ -132,7 +178,7 @@ public class ContinuousCrawlerJob {
 		return batchId;
 	}
 
-	private static void setBatchId(String batchId, final Class<? extends NutchTool> jobClass) {
+	private void setBatchId(String batchId, final Class<? extends NutchTool> jobClass) {
 		List<String> jobArgsList = crawlerFlowJobArgs.get(jobClass);		
 		boolean generateStage = ( GeneratorJob.class == jobClass );
 		if ( ! generateStage) {
@@ -147,7 +193,7 @@ public class ContinuousCrawlerJob {
 		setNamedArgument(BATCH_ID, batchId, jobClass);
 	}
 	
-	private static void setNamedArgument(String name, String value, final Class<? extends NutchTool> jobClass) {
+	private void setNamedArgument(String name, String value, final Class<? extends NutchTool> jobClass) {
 		List<String> jobArgsList = crawlerFlowJobArgs.get(jobClass);		
 		for (int i = 0; i < jobArgsList.size(); i++) {
 			String arg = jobArgsList.get(i);
@@ -161,7 +207,7 @@ public class ContinuousCrawlerJob {
 		jobArgsList.add(value);
 	}
 
-	private static int runJob(final Class<? extends NutchTool> jobClass)
+	private int runJob(final Class<? extends NutchTool> jobClass)
 			throws InstantiationException, IllegalAccessException, Exception {
 		List<String> jobArgsList = crawlerFlowJobArgs.get(jobClass);
 		String[] jobArgs = new String[jobArgsList.size()];
