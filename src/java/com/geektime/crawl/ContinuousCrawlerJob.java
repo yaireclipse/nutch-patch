@@ -7,7 +7,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.apache.nutch.crawl.DbUpdaterJob;
@@ -34,9 +46,26 @@ public class ContinuousCrawlerJob {
 	
 	private static List<Class<? extends NutchTool>> crawlerFlowJobClasses = buildJobsflow();
 	private static Map<String, Object> defaultArgs = buildDefaultArgs();
+
+	private static ContinuousCrawlerJob currentJob;
+	private static Future<Integer> currentJobFuture;
+	
+	private static ReadWriteLock singleRunningJobLock = new ReentrantReadWriteLock();
+	
+	private static ExecutorService executor = buildExecutor();
 	
 	private Map<Class<? extends NutchTool>, List<String>> crawlerFlowJobArgs;
 
+	private AtomicBoolean stopRequested = new AtomicBoolean(false);
+
+	private AtomicLong currentCycle = new AtomicLong(0);
+	private AtomicReference<String> jobClassName = new AtomicReference<String>("No stage yet");
+	private AtomicLong timeStarted = new AtomicLong(-1);
+	private AtomicLong timeEnded = new AtomicLong(-1);
+	private AtomicLong timeCurrentStageStarted = new AtomicLong(-1);
+
+	
+	
 	private ContinuousCrawlerJob() {
 		crawlerFlowJobArgs = Maps.newHashMap();
 		crawlerFlowJobArgs.put(InjectorJob.class, Lists.newArrayList("urls"));
@@ -67,9 +96,16 @@ public class ContinuousCrawlerJob {
 		return Collections.unmodifiableMap(args);
 	}
 
+	private static ExecutorService buildExecutor() {
+		return new ThreadPoolExecutor(1, 1,
+                0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<Runnable>(),
+                new ContinuousCrawlerThreadFactory(LOG),
+                (r, executor) -> LOG.error("submitting runnable to executor was rejected") );
+	}
+	
 	public static void main(String[] args) throws Exception {
-		int res = run(args);
-		System.exit(res);
+		run(args);
 	}
 	
 	public static int run(String[] args) throws Exception {
@@ -103,15 +139,122 @@ public class ContinuousCrawlerJob {
 			}
 		}
 		
-		return run(ccJobArgs);
+		return run(ccJobArgs).getCode();
 	}
+
+	public static boolean stop(final boolean force) {
+		singleRunningJobLock.writeLock().lock();
+		try {
+			if ( isRunning(currentJobFuture) ) {
+				currentJob.setStopRequested(true);
+				if (force) {
+					currentJobFuture.cancel(true);
+				}
+			}
+			return true; // TODO test that stop actually succeeded
+		} finally {
+			singleRunningJobLock.writeLock().unlock();
+		}
+	}
+	
+	public static ContinuousCrawlerJobInfo getCurrentJobInfo() {
+		singleRunningJobLock.readLock().lock();
+		try {
+			final ContinuousCrawlerJobInfo info = new ContinuousCrawlerJobInfo();
+			if ( currentJobFuture == null ) {
+				info.setState(ContinuousCrawlerJobInfo.State.NONE);
+				info.setMessage("no continuous crawler job was run yet");
+				return info;
+			}
+			
+			if ( ! currentJobFuture.isDone() ) {
+				info.setState(ContinuousCrawlerJobInfo.State.RUNNING);
+				info.setMessage("continuous crawler job is currently running");
+			} else {
+				if (currentJobFuture.isCancelled() ) {
+					info.setState(ContinuousCrawlerJobInfo.State.CANCELLED);
+				} else { // done and not cancelled
+					try {
+						final Integer resultCode = currentJobFuture.get();
+						if (resultCode == 0) {
+							info.setState(ContinuousCrawlerJobInfo.State.SUCCESS);
+							info.setMessage("continuous crawler job completed successfully");
+						} else {
+							info.setState(ContinuousCrawlerJobInfo.State.FAILED);
+							info.setResultCode(resultCode);
+						}
+					} catch (InterruptedException e) {
+						LOG.error("not supposed to reach here! Interrupted while waiting for result of DONE Future task", e);
+					} catch (ExecutionException e) {
+						info.setState(ContinuousCrawlerJobInfo.State.FAILED);
+						info.setMessage(ExceptionUtils.getStackTrace(e));
+					}
+				}
+				info.setTimeEnded(currentJob.getTimeEnded());
+			}
+			info.setCurrentCycle(currentJob.getCurrentCycle());
+			info.setCurrentStage(currentJob.getCurrentStage());
+			info.setTimeStarted(currentJob.getTimeStarted());
+			info.setTimeCurrentStageStarted(currentJob.getTimeCurrentStageStarted());
+			return info;
+		} finally {
+			singleRunningJobLock.readLock().unlock();
+		}
+	}
+	
+	private Long getTimeEnded() {
+		return this.timeEnded.get();
+	}
+
+	private Long getTimeCurrentStageStarted() {
+		return this.timeCurrentStageStarted.get();
+	}
+
+	private Long getTimeStarted() {
+		return this.timeStarted.get();
+	}
+
+	private String getCurrentStage() {
+		return this.jobClassName.get();
+	}
+
+	private Long getCurrentCycle() {
+		return this.currentCycle.get();
+	}
+
+	public static boolean isRunning( final Future<?> f ) {
+		return f != null && ! f.isDone();
+	}
+	
+	public static ContinuousCrawlerJobResponse run(final Map<String, Object> args) throws Exception {
+		singleRunningJobLock.writeLock().lock();
+		final boolean succeeded;
+		try {
+			if ( isRunning(currentJobFuture) ) {
+				succeeded = false;
+			} else {
+				currentJob = new ContinuousCrawlerJob();
+				currentJobFuture = executor.submit( () -> currentJob.runJobInstance(args) );
+				succeeded = true;
+			}
+		} finally {
+			singleRunningJobLock.writeLock().unlock();
+		}
 		
-	public static int run(final Map<String, Object> args) throws Exception {
-		final ContinuousCrawlerJob ccJob = new ContinuousCrawlerJob();
-		return ccJob.runJobInstance(args);
+		final ContinuousCrawlerJobResponse response;
+		if (succeeded) {
+			response = ContinuousCrawlerJobResponse.newSuccessResponse("continuous crawler job created successfully");
+		} else {
+			final String msg = "continuous crawler job already running. It has to be stopped before running a new one.";
+			LOG.error(msg);
+			response = ContinuousCrawlerJobResponse.newFailResponse(msg);
+		}
+		return response;
 	}
 	
 	private int runJobInstance(final Map<String, Object> args) throws Exception {
+		
+		this.timeStarted.set(System.currentTimeMillis());
 		
 		int res = 0;
 		
@@ -129,17 +272,22 @@ public class ContinuousCrawlerJob {
 		int maxCycles = (int) getArgValue("cycles", args);
 		
 		String batchId = null;
-		int currCycle = 1;
-		while (res == 0 && currCycle <= maxCycles) {
+		currentCycle.set(1);
+		while (res == 0 && currentCycle.get() <= maxCycles ) {
+			if (stopRequested.get() == true) {
+				LOG.info("stop requested. Not proceeding to next stage. Exitting.");
+				break;
+			}
 			final Class<? extends NutchTool> jobClass = crawlerFlowJobClasses.get(jobClassIndex);
 			batchId = determineBatchId(jobClassIndex, batchId, externalBatchId);
-			LOG.info(String.format("starting crawl stage: %s, crawl cycle: %d", jobClass.getSimpleName(), currCycle));
+			LOG.info(String.format("starting crawl stage: %s, crawl cycle: %d", jobClass.getSimpleName(), currentCycle.get()));
 			res = runJob(jobClass);
+			jobClassName.set("between stages");
 			if (res == 0) {
 				jobClassIndex++;
 				jobClassIndex = jobClassIndex % crawlerFlowJobClasses.size();
 				if (jobClassIndex == 0 ) {
-					currCycle++;
+					currentCycle.incrementAndGet();
 				}
 			} else { // retry in 5 sec.
 				LOG.error("job " + jobClass.getSimpleName() + " returned error code result: " + res + ". Retrying in 5 seconds...");
@@ -147,6 +295,9 @@ public class ContinuousCrawlerJob {
 				res = 0;
 			}
 		}
+		
+		this.timeEnded.set(System.currentTimeMillis());
+		
 		return res;
 	}
 
@@ -207,13 +358,18 @@ public class ContinuousCrawlerJob {
 		jobArgsList.add(value);
 	}
 
+	public void setStopRequested(final boolean stopRequested) {
+		this.stopRequested.set( stopRequested );
+	}
+	
 	private int runJob(final Class<? extends NutchTool> jobClass)
 			throws InstantiationException, IllegalAccessException, Exception {
+		this.jobClassName.set( jobClass.getName() );
+		this.timeCurrentStageStarted.set(System.currentTimeMillis());
 		List<String> jobArgsList = crawlerFlowJobArgs.get(jobClass);
 		String[] jobArgs = new String[jobArgsList.size()];
 		final NutchTool jobInstance = jobClass.newInstance();
 		int res = ToolRunner.run(NutchConfiguration.create(), (Tool) jobInstance, jobArgsList.toArray(jobArgs));
 		return res;
 	}
-	
 }
