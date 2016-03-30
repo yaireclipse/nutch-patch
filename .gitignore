@@ -6,3 +6,7 @@ runtime/
 logs/
 hadoop.log*
 target/
+
+# Eclipse files
+.classpath
+.project
