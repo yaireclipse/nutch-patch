@@ -3,6 +3,8 @@ package com.geektime.crawl;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -25,6 +27,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.apache.nutch.api.model.request.SeedList;
+import org.apache.nutch.api.model.request.SeedUrl;
 import org.apache.nutch.crawl.DbUpdaterJob;
 import org.apache.nutch.crawl.GeneratorJob;
 import org.apache.nutch.crawl.InjectorJob;
@@ -41,6 +44,11 @@ import com.google.common.collect.Maps;
 import com.google.gson.Gson;
 
 public class ContinuousCrawlerJob {
+
+	private static final String SKIP_CYCLES_RULE = "-.*(/[^/]+)/[^/]+\\1/[^/]+\\1/";
+	private static final String SKIP_QUERIES_RULE = "-[?*!@=]";
+	private static final String SKIP_FILE_TYPES_RULE = "-\\.(gif|GIF|jpg|JPG|png|PNG|ico|ICO|css|CSS|sit|SIT|eps|EPS|wmf|WMF|zip|ZIP|ppt|PPT|mpg|MPG|xls|XLS|gz|GZ|rpm|RPM|tgz|TGZ|mov|MOV|exe|EXE|jpeg|JPEG|bmp|BMP|js|JS)$";
+	private static final String SKIP_SCHEMES_RULE = "-^(file|ftp|mailto):";
 
 	private static final Logger LOG = LoggerFactory.getLogger(ContinuousCrawlerJob.class);
 	
@@ -316,9 +324,33 @@ public class ContinuousCrawlerJob {
 		final List<String> injectArgs = crawlerFlowJobArgs.get(InjectorJob.class);
 		injectArgs.clear();
 		injectArgs.add(seedDirPath);
+		
+		final SeedList seedList = seeder.getSeedList();
+		configureRegexUrlFilterRules(seedList);
+		
 		res = runInject();
 		seeder.close();
 		return res;
+	}
+
+	private void configureRegexUrlFilterRules(final SeedList seedList) throws URISyntaxException {
+		final StringBuilder sb = new StringBuilder();
+		sb.append(SKIP_SCHEMES_RULE).append("\n");
+		sb.append(SKIP_FILE_TYPES_RULE).append("\n");
+		sb.append(SKIP_QUERIES_RULE).append("\n");
+		sb.append(SKIP_CYCLES_RULE).append("\n");
+		for (final SeedUrl seedUrl : seedList.getSeedUrls()) {
+			final String url = seedUrl.getUrl();
+			// +^http://([a-z0-9]*\.)*tianya.cn/
+			final URI uri = new URI(url);
+			final String scheme = uri.getScheme();
+			final String authority = uri.getAuthority();
+			sb.append(String.format("+^%s://([a-z0-9]*\\.)*%s/", scheme, authority)).append("\n");
+			System.out.println("****** adding: " + String.format("+^%s://([a-z0-9]*\\.)*%s/", scheme, authority));
+		}
+		LOG.debug(String.format("Using following regex-urlfilter rules: %s", sb.toString()));
+		System.out.println(String.format("Using following regex-urlfilter rules: %s", sb.toString()));
+		conf.set("urlfilter.regex.rules", sb.toString());
 	}
 
 	private int runInject() throws InstantiationException,

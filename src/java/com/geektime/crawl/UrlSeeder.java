@@ -5,7 +5,9 @@ import static javax.ws.rs.core.Response.status;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 
 import javax.ws.rs.WebApplicationException;
@@ -73,6 +75,25 @@ public class UrlSeeder {
 		} catch (IOException e) {
 			throw handleException(e);
 		}
+	}
+	
+	/**
+	 * @return a copy of the SeedList.
+	 */
+	public SeedList getSeedList() {
+		final SeedList copy = new SeedList();
+		copy.setId(seedList.getId());
+		copy.setName(seedList.getName());
+		final List<SeedUrl> urlsCopy = new ArrayList<SeedUrl>();
+		for (final SeedUrl seedUrl : seedList.getSeedUrls()) {
+			final SeedUrl seedUrlCopy = new SeedUrl();
+			seedUrlCopy.setId(seedUrl.getId());
+			seedUrlCopy.setSeedList(seedUrl.getSeedList());
+			seedUrlCopy.setUrl(seedUrl.getUrl());
+			urlsCopy.add(seedUrlCopy);
+		}
+		copy.setSeedUrls(urlsCopy);
+		return copy;
 	}
 	
 	private void writeUrl(final BufferedWriter writer, final SeedUrl seedUrl) {
