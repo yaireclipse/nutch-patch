@@ -2,6 +2,7 @@ package com.geektime.crawl;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -20,8 +21,10 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
+import org.apache.nutch.api.model.request.SeedList;
 import org.apache.nutch.crawl.DbUpdaterJob;
 import org.apache.nutch.crawl.GeneratorJob;
 import org.apache.nutch.crawl.InjectorJob;
@@ -35,6 +38,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.gson.Gson;
 
 public class ContinuousCrawlerJob {
 
@@ -64,6 +68,7 @@ public class ContinuousCrawlerJob {
 	private AtomicLong timeEnded = new AtomicLong(-1);
 	private AtomicLong timeCurrentStageStarted = new AtomicLong(-1);
 
+	private final Configuration conf = NutchConfiguration.create();
 	
 	
 	private ContinuousCrawlerJob() {
@@ -136,6 +141,8 @@ public class ContinuousCrawlerJob {
 				ccJobArgs.put(TOP_N,args[++i]);
 			} else if (CYCLES.equals(args[i])) {
 				ccJobArgs.put("cycles", Integer.parseInt(args[++i]));
+			} else if ("-seedList".equals(args[i])) {
+				ccJobArgs.put("seedList", args[++i]);
 			}
 		}
 		
@@ -258,11 +265,18 @@ public class ContinuousCrawlerJob {
 		
 		int res = 0;
 		
-		if ( (boolean) getArgValue("inject", args) ) {
-			res = runJob(InjectorJob.class);
-			if (res != 0) {
-				System.exit(res);
-			}
+		final String seedListJsonStr = (String) getArgValue("seedList", args);
+		if ( seedListJsonStr != null ) { // seed is requested - so seed and inject
+			final UrlSeeder seeder = runSeed(seedListJsonStr);
+			final String seedDirPath = seeder.getSeedDir();
+			// direct inject job to new directory that contains seed file
+			final List<String> injectArgs = crawlerFlowJobArgs.get(InjectorJob.class);
+			injectArgs.clear();
+			injectArgs.add(seedDirPath);
+			res = runInject();
+			seeder.close();
+		} else if ( (boolean) getArgValue("inject", args) ) { // only inject requested
+			res = runInject();
 		}
 		
 		
@@ -299,6 +313,23 @@ public class ContinuousCrawlerJob {
 		this.timeEnded.set(System.currentTimeMillis());
 		
 		return res;
+	}
+
+	private int runInject() throws InstantiationException,
+			IllegalAccessException, Exception {
+		int res;
+		res = runJob(InjectorJob.class);
+		if (res != 0) {
+			System.exit(res);
+		}
+		return res;
+	}
+
+	private UrlSeeder runSeed(final String seedListJsonStr) throws IOException {
+		final SeedList seedList = new Gson().fromJson(seedListJsonStr, SeedList.class);
+		final UrlSeeder urlSeeder = new UrlSeeder(seedList, conf);
+		urlSeeder.seed();
+		return urlSeeder;
 	}
 
 	private Object getArgValue(final String name, final Map<String, Object> args) {
@@ -369,7 +400,7 @@ public class ContinuousCrawlerJob {
 		List<String> jobArgsList = crawlerFlowJobArgs.get(jobClass);
 		String[] jobArgs = new String[jobArgsList.size()];
 		final NutchTool jobInstance = jobClass.newInstance();
-		int res = ToolRunner.run(NutchConfiguration.create(), (Tool) jobInstance, jobArgsList.toArray(jobArgs));
+		int res = ToolRunner.run(this.conf , (Tool) jobInstance, jobArgsList.toArray(jobArgs));
 		return res;
 	}
 }
