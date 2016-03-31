@@ -267,14 +267,7 @@ public class ContinuousCrawlerJob {
 		
 		final String seedListJsonStr = (String) getArgValue("seedList", args);
 		if ( seedListJsonStr != null ) { // seed is requested - so seed and inject
-			final UrlSeeder seeder = runSeed(seedListJsonStr);
-			final String seedDirPath = seeder.getSeedDir();
-			// direct inject job to new directory that contains seed file
-			final List<String> injectArgs = crawlerFlowJobArgs.get(InjectorJob.class);
-			injectArgs.clear();
-			injectArgs.add(seedDirPath);
-			res = runInject();
-			seeder.close();
+			res = runSeedAndInject(seedListJsonStr);
 		} else if ( (boolean) getArgValue("inject", args) ) { // only inject requested
 			res = runInject();
 		}
@@ -312,6 +305,19 @@ public class ContinuousCrawlerJob {
 		
 		this.timeEnded.set(System.currentTimeMillis());
 		
+		return res;
+	}
+
+	private int runSeedAndInject(final String seedListJsonStr) throws Exception {
+		int res;
+		final UrlSeeder seeder = runSeed(seedListJsonStr);
+		final String seedDirPath = seeder.getSeedDir();
+		// direct inject job to new directory that contains seed file
+		final List<String> injectArgs = crawlerFlowJobArgs.get(InjectorJob.class);
+		injectArgs.clear();
+		injectArgs.add(seedDirPath);
+		res = runInject();
+		seeder.close();
 		return res;
 	}
 
