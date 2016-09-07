@@ -93,6 +93,10 @@
     <dependency org="org.mortbay.jetty" name="jetty-util" rev="6.1.26" conf="test->default,sources" />
     <dependency org="org.mortbay.jetty" name="jetty-client" rev="6.1.26" />
 
+	<dependency org="tomcat" name="jasper-compiler" rev="5.5.23" conf="test->default">
+		<exclude org="ant" name="ant" />
+	</dependency>
+
     <dependency org="org.hsqldb" name="hsqldb" rev="2.2.8" conf="*->default,sources" />
     <dependency org="org.jdom" name="jdom" rev="1.1" conf="test->default,sources"/>
 	<dependency org="org.mockito" name="mockito-all" rev="1.9.5" conf="test->default,sources"/>
