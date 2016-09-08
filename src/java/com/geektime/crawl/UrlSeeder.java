@@ -26,7 +26,6 @@ import org.slf4j.LoggerFactory;
 
 public class UrlSeeder {
 
-	private static final String URLS_DIR = "/user/hduser/urls";
 	private static final String SEED_FILE_NAME = "seed.txt";
 	private static final Logger log = LoggerFactory.getLogger(UrlSeeder.class);
 	
@@ -43,9 +42,7 @@ public class UrlSeeder {
 	/**
 	 * Method creates seed list file and returns temporary directory path
 	 * 
-	 * @param seedList
-	 * @return
-	 * @throws IOException 
+	 * @throws IOException
 	 */
 	public void seed() throws IOException {
 		if (seedList == null) {
@@ -65,7 +62,8 @@ public class UrlSeeder {
 	}
 
 	public String getSeedDir() {
-		return URLS_DIR + "/" + seedFile.getParent().getName();		
+		final Path parent = seedFile.getParent();
+		return parent.getParent().getName() + "/" + parent.getName();
 	}
 	
 	public void close() {
@@ -120,7 +118,8 @@ public class UrlSeeder {
 		/* randomize seedDir's name, since InjectorJob accepts seed files directory
 		   and not a single seed file. So need to verify there's no mixing of seed files
 		   from one crawl request to another */
-		final Path seedDir = new Path(URLS_DIR, UUID.randomUUID().toString());
+		final String urlsDir = conf.get("continous.urls.dir");
+		final Path seedDir = new Path(urlsDir, UUID.randomUUID().toString());
 		final Path seedFile = new Path(seedDir , SEED_FILE_NAME);
 		return seedFile;
 	}

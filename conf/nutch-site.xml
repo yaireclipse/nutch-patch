@@ -118,4 +118,8 @@
   </property>  
   <!-- END HISTORY INDEXER -->
 
+  <property>
+    <name>continous.urls.dir</name>
+    <value>/user/hduser/urls</value>
+  </property>
 </configuration>
