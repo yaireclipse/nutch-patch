@@ -21,7 +21,7 @@ When ContinousCrawlJob runs on Nutch Server, it exposes common HTTP API:
 - Stop current crawl
 - get current crawl status
 
-### Content History / Versions
+### Crawled-Content History / Versions
 Whenever a page's contect is re-fetched, new content is compared to previous content. If it was changed, the old content is saved to a different MongoDB collection, eventually creating a list of versioned content with fetch-dates.
 
 There are [ready-made Eclipse launchers](https://github.com/yaireclipse/nutch-patch/tree/master/eclipse_run_configurations), for each crawl stage, as well as for the continous crawl job and the Nutch Server. They can be used for development with Eclipse, but can also be converted to IntelliJ launcher via [Eclipser](https://github.com/kukido/eclipser).
