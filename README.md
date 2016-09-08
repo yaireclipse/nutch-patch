@@ -2,9 +2,6 @@
 
 This is a fork of [Apache Nutch (branch 2.3)](https://github.com/apache/nutch/tree/branch-2.3), enhanced to fulfil requirements of projects I performed.
 
-## Disclaimer:
-Nutch-patch is, at most, in beta. I'd be happy if it'll be useful for others, but it's here mainly because I need it.
-
 ## Features:
 
 ### Continous Crawl
@@ -31,3 +28,6 @@ There are [ready-made Eclipse launchers](https://github.com/yaireclipse/nutch-pa
 
 ### Notes
 It is pre-configured to work with MongoDB as Nutch's storage and Elasticsearch as the index storage.
+
+## Disclaimer:
+Nutch-patch is, at most, in beta. I'd be happy if it'll be useful for others, but it's here mainly because I need it.
