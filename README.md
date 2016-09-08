@@ -1,3 +1,23 @@
 # Nutch-Patch : Enhanced features for [Nutch Crawler](http://nutch.apache.org/)
 
 ## Features:
+
+### Continous Crawl
+One Job to rule them all.
+
+- [ContinuousCrawlerJob](https://github.com/yaireclipse/nutch-patch/blob/master/src/java/com/geektime/crawl/ContinuousCrawlerJob.java) wraps up all Nutch stages (generate, fetch, parse, updateDB and index) into a single job.
+- Set number of crawl cycles per run (`cycles` arg)
+- Set at which crawl stage to start the first cycle (`stage` arg)
+- Inject pre-seeded urls (`inject` arg)
+- Dynamically seed new urls and auto-inject them (`seedUrls` arg)
+- Runs independently or on Nutch Server
+
+### REST API (HTTP API for the least ;) )
+When ContinousCrawlJob runs on Nutch Server, it exposes common HTTP API:
+
+- Create new continous crawl
+- Stop current crawl
+- get current crawl status
+
+### Content History / Versions
+Whenever a page's contect is re-fetched, new content is compared to previous content. If it was changed, the old content is saved to a different MongoDB collection, eventually creating a list of versioned content with fetch-dates.
