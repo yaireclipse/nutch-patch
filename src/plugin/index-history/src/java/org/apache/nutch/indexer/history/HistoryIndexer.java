@@ -17,18 +17,11 @@
 
 package org.apache.nutch.indexer.history;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.TimeoutException;
-
-import javax.annotation.Nullable;
-
+import com.google.common.base.Objects;
+import com.google.gson.Gson;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.ConnectionFactory;
 import org.apache.gora.store.DataStore;
 import org.apache.gora.store.DataStoreFactory;
 import org.apache.gora.util.GoraException;
@@ -43,12 +36,11 @@ import org.apache.nutch.storage.WebPage.Field;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Objects;
-import com.google.gson.Gson;
-import com.j256.ormlite.logger.Log;
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.ConnectionFactory;
+import javax.annotation.Nullable;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.*;
+import java.util.concurrent.TimeoutException;
 
 /**
  * If a {@link WebPage} was modified since last indexing, that WebPage is copied to
@@ -102,7 +94,7 @@ public class HistoryIndexer implements IndexingFilter {
 	    
 	    List<WebPage> webPageData = crawledWebPage.getWebPageData();
 	    if (webPageData == null) {
-			webPageData = new ArrayList<WebPage>();
+			webPageData = new ArrayList<>();
 			crawledWebPage.setWebPageData(webPageData);
 		}
 	    
@@ -188,7 +180,7 @@ public class HistoryIndexer implements IndexingFilter {
 	
 	eventMessage.setMsgUuid(UUID.randomUUID());
 	
-	final HashMap<String, Object> params = new HashMap<String, Object>();
+	final HashMap<String, Object> params = new HashMap<>();
 	params.put("db", "mongo");
 	params.put("key", url);
 	params.put("fetchTime", fetchTime);
@@ -264,7 +256,7 @@ public class HistoryIndexer implements IndexingFilter {
     webPage.setTitle(page.getTitle());
     
     final List<WebPage> webPageData = crawledWebPage.getWebPageData();
-    webPageData.add(webPage);
+    webPageData.add(0, webPage);
     
  // setting back webPageData marks this field as dirty (== should be flushed to DB), otherwise data will be lost
     crawledWebPage.setWebPageData(webPageData);
