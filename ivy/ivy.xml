@@ -144,8 +144,8 @@
     <!-- The gora-compiler is used within the 'ant generate-gora-src' target to compile
     the Gora .avsc files within ./src/gora 
     -->
-    <dependency org="org.apache.gora" name="gora-compiler-cli" rev="0.6" conf="*->default,sources"/>
-    <dependency org="org.apache.gora" name="gora-compiler" rev="0.6" conf="*->default,sources"/>
+    <dependency org="org.apache.gora" name="gora-compiler-cli" rev="0.5" conf="*->default,sources"/>
+    <dependency org="org.apache.gora" name="gora-compiler" rev="0.5" conf="*->default,sources"/>
 
     <!-- web app dependencies -->
 
