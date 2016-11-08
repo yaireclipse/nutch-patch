@@ -564,6 +564,7 @@
     <java classname="org.apache.gora.compiler.cli.GoraCompilerCLI">
      <classpath refid="classpath"/>
      <arg value="src/gora/webpage.avsc"/>
+     <!--arg value="src/plugin/index-history/src/gora/crawledwebpage.avsc"/-->
      <!--arg value="src/gora/host.avsc"/-->
      <arg value="${src.dir}"/>
     </java>
